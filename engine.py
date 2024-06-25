@@ -13,6 +13,7 @@ import util.misc as utils
 from datasets.coco_eval import CocoEvaluator
 from datasets.panoptic_eval import PanopticEvaluator
 
+import pandas as pd
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -90,6 +91,11 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
+    
+    # edited
+    output = pd.DataFrame.from_dict(grad_norms_list)
+    output.to_csv('/raid/swasim/farjad/repos/pair-dcmha/withoutDCMHA.csv')
+    # till here
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
