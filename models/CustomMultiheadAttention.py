@@ -43,7 +43,7 @@ class CustomMultiheadAttention(nn.Module):
         return output, attn_weights
 
     def forward(self, query, key, value, key_padding_mask=None, need_weights=True, attn_mask=None):
-        batch_size, seq_length, embed_dim = query.size()
+        seq_length, batch_size, embed_dim = query.size()
 
         # Linear projections
         Q = self.q_linear(query)
@@ -59,7 +59,7 @@ class CustomMultiheadAttention(nn.Module):
         attn_output, attn_weights = self.scaled_dot_product_attention(Q, K, V)
 
         # Concatenate heads and apply final linear projection
-        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_length, self.embed_dim)
+        attn_output = attn_output.transpose(1, 2).contiguous().view(seq_length, batch_size, self.embed_dim)
         output = self.out_linear(attn_output)
 
         return output, attn_weights
