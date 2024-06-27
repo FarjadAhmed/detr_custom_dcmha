@@ -14,6 +14,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 from .post_attention import DCMHA
+from .CustomMultiheadAttention import CustomMultiheadAttention
+
 
 
 class Transformer(nn.Module):
@@ -130,7 +132,8 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False):
         super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.self_attn = CustomMultiheadAttention(d_model, nhead, dropout=dropout)
         # self.self_attn_transformed = DCMHA(d_model, nhead)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
