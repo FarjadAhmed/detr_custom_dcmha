@@ -13,8 +13,9 @@ from typing import Optional, List
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
-from .post_attention import DCMHA
+from .ExtendedMultiheadAttention import ExtendedMultiheadAttention
 from .CustomMultiheadAttention import CustomMultiheadAttention
+from .test_dcmha import DynamicallyComposedMultiHeadAttentionWrapper
 
 
 
@@ -133,7 +134,9 @@ class TransformerEncoderLayer(nn.Module):
                  activation="relu", normalize_before=False):
         super().__init__()
         # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        self.self_attn = CustomMultiheadAttention(d_model, nhead, dropout=dropout)
+        # self.self_attn = DynamicallyComposedMultiHeadAttentionWrapper(d_model, nhead,)
+        self.self_attn = ExtendedMultiheadAttention(d_model, nhead,)
+        # self.self_attn = CustomMultiheadAttention(d_model, nhead, dropout=dropout)
         # self.self_attn_transformed = DCMHA(d_model, nhead)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -160,6 +163,9 @@ class TransformerEncoderLayer(nn.Module):
         src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
         
+        # src2 = self.extended(q, k, value=src, attn_mask=src_mask,
+        #                       key_padding_mask=src_key_padding_mask)[0]
+        
         # src2 = self.self_attn_transformed(src2) # edited transformed attention
 
 
@@ -179,7 +185,7 @@ class TransformerEncoderLayer(nn.Module):
         src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
 
-        # src2 = self.self_attn_transformed(src2) # edited transformed attention
+        # src2 = self.extend_attn(src2) # edited transformed attention
 
         src = src + self.dropout1(src2)
         src2 = self.norm2(src)
@@ -229,6 +235,7 @@ class TransformerDecoderLayer(nn.Module):
                      pos: Optional[Tensor] = None,
                      query_pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(tgt, query_pos)
+        # print('\n\n\n', 'Q shape is: ', q.shape, '\n\n\n')
         tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
                               key_padding_mask=tgt_key_padding_mask)[0]
         tgt = tgt + self.dropout1(tgt2)
