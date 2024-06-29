@@ -1,4 +1,12 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+# ------------------------------------------------------------------------
+# Conditional DETR
+# Copyright (c) 2021 Microsoft. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+# Copied from DETR (https://github.com/facebookresearch/detr)
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+# ------------------------------------------------------------------------
+
 """
 Train and eval functions used in main.py
 """
@@ -12,6 +20,7 @@ import torch
 import util.misc as utils
 from datasets.coco_eval import CocoEvaluator
 from datasets.panoptic_eval import PanopticEvaluator
+import pandas as pd
 
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
@@ -24,6 +33,15 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
+
+     
+
+
+    # Initialize an empty dataframe with columns for each parameter
+    param_names = [name for name, _ in model.module.transformer.named_parameters()]
+    grad_norm_df = pd.DataFrame(columns=["Step"] + param_names)
+    grad_norms_list = []
+    step = 0
 
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
         samples = samples.to(device)
@@ -55,12 +73,31 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
         optimizer.step()
 
+        grad_norms_step = {"Step": step}
+
+        for name, param in model.module.transformer.named_parameters():
+            if param.grad is not None:
+                grad_norm = torch.norm(param.grad).item()
+                grad_norms_step[name] = grad_norm
+
+        # Append the gradient norms for this step to the dataframe
+        # grad_norm_df = grad_norm_df.append(grad_norms_step, ignore_index=True)
+        grad_norms_list.append(grad_norms_step)
+
         metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled, **loss_dict_reduced_unscaled)
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        
+        if step >=  10000:
+            break
+        step += 1
+        print('\n\n\n', step, '\n\n\n')
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
+    output = pd.DataFrame.from_dict(grad_norms_list)
+    output.to_csv('/raid/swasim/farjad/repos/detr_custom_dcmha/branched_first_trial.csv')
+
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
