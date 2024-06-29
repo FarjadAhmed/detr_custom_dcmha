@@ -11,22 +11,30 @@ class Extended_DCMHA(nn.Module):
         self.rank = 64
 
         self.mha = nn.MultiheadAttention(embed_dim, num_heads, **kwargs)
+        self.tanh = nn.Tanh()
         
         # Learnable matrices to modify attention output
         self.Wb = nn.Parameter(torch.randn(embed_dim, embed_dim))
-        
+        # gating
+        self.W_3g = nn.Parameter(torch.randn(embed_dim, embed_dim))
+
         self.W_K1 = nn.Parameter(torch.randn(embed_dim, embed_dim))
         self.W_k12 = nn.Parameter(torch.randn(int(embed_dim/2), self.rank))
         self.W_k12_upscale = nn.Parameter(torch.randn(self.rank, embed_dim))
         self.W_kg = nn.Parameter(torch.randn(int(embed_dim/2), self.rank))
         self.W_kg_mid = nn.Parameter(torch.randn(self.rank, embed_dim))
+        # gating logic
+        self.W_1g = nn.Parameter(torch.randn(embed_dim, embed_dim))
+        self.W_2g = nn.Parameter(torch.randn(embed_dim, embed_dim))
 
         self.W_Q1 = nn.Parameter(torch.randn(embed_dim, embed_dim))
         self.W_q12 = nn.Parameter(torch.randn(int(embed_dim/2), self.rank))
         self.W_q12_upscale = nn.Parameter(torch.randn(self.rank, embed_dim))
         self.W_qg = nn.Parameter(torch.randn(int(embed_dim/2), self.rank))
         self.W_qg_mid = nn.Parameter(torch.randn(self.rank, embed_dim))
-
+        # gating
+        self.W_4g = nn.Parameter(torch.randn(embed_dim, embed_dim))
+        self.W_5g = nn.Parameter(torch.randn(embed_dim, embed_dim))
     def forward(self, query, key, value, **kwargs):
         attn_output, attn_output_weights = self.mha(query, key, value, **kwargs)
         
@@ -43,13 +51,14 @@ class Extended_DCMHA(nn.Module):
 
         # branch 3
         AWb = torch.matmul(attn_output, self.Wb)
+        gated_AWb = self.tanh(torch.matmul(AWb, self.W_3g))
 
 
         # I think im either missing the gating logic or I need to go 
         # in pytorch funcitonal and apply this before and after the softmax
         # first thing makes more sense, second sounds stupid
 
-        output = bleft[0] + bleft[1] + AWb + bright[0] + bright[1]
+        output = bleft[0] + bleft[1] + gated_AWb + bright[0] + bright[1]
         
         return output, attn_output_weights
 
@@ -68,11 +77,13 @@ class Extended_DCMHA(nn.Module):
         b1 = torch.matmul(key_chunked[0], self.W_kg)
         b1 = torch.matmul(b1, self.W_kg_mid)
         b1 = (b1*attn_output)
+        gated_b1 = self.tanh(torch.matmul(b1, self.W_1g))
 
         # branch 2
         b2 = torch.matmul(key_chunked[1], self.W_k12)
         b2 = torch.matmul(b2, self.W_k12_upscale)
-        return b1, b2
+        gated_b2 = self.tanh(torch.matmul(b2, self.W_2g))
+        return gated_b1, gated_b2
     
     def right_branch(self, attn_output, query):
         # branch 5
@@ -82,8 +93,10 @@ class Extended_DCMHA(nn.Module):
         b1 = torch.matmul(query_chunked[0], self.W_qg)
         b1 = torch.matmul(b1, self.W_qg_mid)
         b1 = (b1*attn_output)
+        gated_b1 = self.tanh(torch.matmul(b1, self.W_5g))
 
         # branch 4
         b2 = torch.matmul(query_chunked[1], self.W_q12)
         b2 = torch.matmul(b2, self.W_q12_upscale)
-        return b1, b2
+        gated_b2 = self.tanh(torch.matmul(b2, self.W_4g))
+        return gated_b1, gated_b2
