@@ -13,11 +13,7 @@ from typing import Optional, List
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
-from .ExtendedMultiheadAttention import ExtendedMultiheadAttention
 from .Extended_DCMHA import Extended_DCMHA
-from .CustomMultiheadAttention import CustomMultiheadAttention
-from .test_dcmha import DynamicallyComposedMultiHeadAttentionWrapper
-
 
 
 class Transformer(nn.Module):
@@ -135,11 +131,7 @@ class TransformerEncoderLayer(nn.Module):
                  activation="relu", normalize_before=False):
         super().__init__()
         # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        # self.self_attn = DynamicallyComposedMultiHeadAttentionWrapper(d_model, nhead,)
-        # self.self_attn = ExtendedMultiheadAttention(d_model, nhead,)
-        self.self_attn = Extended_DCMHA(d_model, nhead,)
-        # self.self_attn = CustomMultiheadAttention(d_model, nhead, dropout=dropout)
-        # self.self_attn_transformed = DCMHA(d_model, nhead)
+        self.self_attn = Extended_DCMHA(d_model, nhead, dropout=dropout)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -164,13 +156,6 @@ class TransformerEncoderLayer(nn.Module):
         q = k = self.with_pos_embed(src, pos)
         src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
-        
-        # src2 = self.extended(q, k, value=src, attn_mask=src_mask,
-        #                       key_padding_mask=src_key_padding_mask)[0]
-        
-        # src2 = self.self_attn_transformed(src2) # edited transformed attention
-
-
         src = src + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
@@ -186,9 +171,6 @@ class TransformerEncoderLayer(nn.Module):
         q = k = self.with_pos_embed(src2, pos)
         src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
-
-        # src2 = self.extend_attn(src2) # edited transformed attention
-
         src = src + self.dropout1(src2)
         src2 = self.norm2(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src2))))
@@ -237,7 +219,6 @@ class TransformerDecoderLayer(nn.Module):
                      pos: Optional[Tensor] = None,
                      query_pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(tgt, query_pos)
-        # print('\n\n\n', 'Q shape is: ', q.shape, '\n\n\n')
         tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
                               key_padding_mask=tgt_key_padding_mask)[0]
         tgt = tgt + self.dropout1(tgt2)
