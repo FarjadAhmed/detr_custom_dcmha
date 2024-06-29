@@ -88,13 +88,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         
-        if step >=  100000:
+        if step >=  10000:
             break
         step += 1
         print('\n\n\n', step, '\n\n\n')
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
+    # print("Averaged stats:", metric_logger)
     output = pd.DataFrame.from_dict(grad_norms_list)
     output.to_csv('/raid/swasim/farjad/repos/detr_custom_dcmha/branched_first_trial.csv')
 
