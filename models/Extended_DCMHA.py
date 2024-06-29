@@ -35,6 +35,32 @@ class Extended_DCMHA(nn.Module):
         # gating
         self.W_4g = nn.Parameter(torch.randn(embed_dim, embed_dim))
         self.W_5g = nn.Parameter(torch.randn(embed_dim, embed_dim))
+
+        self._reset_parameters() # xavier initialization
+
+
+
+    def _reset_parameters(self):
+        nn.init.xavier_uniform_(self.Wb)
+        nn.init.xavier_uniform_(self.W_3g)
+        nn.init.xavier_uniform_(self.W_K1)
+        nn.init.xavier_uniform_(self.W_k12)
+        nn.init.xavier_uniform_(self.W_k12_upscale)
+        nn.init.xavier_uniform_(self.W_kg)
+        nn.init.xavier_uniform_(self.W_kg_mid)
+        nn.init.xavier_uniform_(self.W_1g)
+        nn.init.xavier_uniform_(self.W_2g)
+        nn.init.xavier_uniform_(self.W_Q1)
+        nn.init.xavier_uniform_(self.W_q12)
+        nn.init.xavier_uniform_(self.W_q12_upscale)
+        nn.init.xavier_uniform_(self.W_qg)
+        nn.init.xavier_uniform_(self.W_qg_mid)
+        nn.init.xavier_uniform_(self.W_4g)
+        nn.init.xavier_uniform_(self.W_5g)
+
+
+
+
     def forward(self, query, key, value, **kwargs):
         attn_output, attn_output_weights = self.mha(query, key, value, **kwargs)
         
@@ -47,16 +73,9 @@ class Extended_DCMHA(nn.Module):
         # branches right
         bright = self.right_branch(attn_output, query)
 
-
-
         # branch 3
         AWb = torch.matmul(attn_output, self.Wb)
         gated_AWb = self.tanh(torch.matmul(AWb, self.W_3g))
-
-
-        # I think im either missing the gating logic or I need to go 
-        # in pytorch funcitonal and apply this before and after the softmax
-        # first thing makes more sense, second sounds stupid
 
         output = bleft[0] + bleft[1] + gated_AWb + bright[0] + bright[1]
         
