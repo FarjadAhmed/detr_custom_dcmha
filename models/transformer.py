@@ -14,6 +14,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 from .ExtendedMultiheadAttention import ExtendedMultiheadAttention
+from .Extended_DCMHA import Extended_DCMHA
 from .CustomMultiheadAttention import CustomMultiheadAttention
 from .test_dcmha import DynamicallyComposedMultiHeadAttentionWrapper
 
@@ -135,7 +136,8 @@ class TransformerEncoderLayer(nn.Module):
         super().__init__()
         # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         # self.self_attn = DynamicallyComposedMultiHeadAttentionWrapper(d_model, nhead,)
-        self.self_attn = ExtendedMultiheadAttention(d_model, nhead,)
+        # self.self_attn = ExtendedMultiheadAttention(d_model, nhead,)
+        self.self_attn = Extended_DCMHA(d_model, nhead,)
         # self.self_attn = CustomMultiheadAttention(d_model, nhead, dropout=dropout)
         # self.self_attn_transformed = DCMHA(d_model, nhead)
         # Implementation of Feedforward model
